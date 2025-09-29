@@ -59,7 +59,7 @@ LoRa = init_lora()
 # Parse GPS Data
 # -------------------
 def parse_gps_data(line):
-    """Parses NMEA GPS RMC sentences"""
+    """Parses NMEA GPS RMC sentences."""
     try:
         msg = pynmea2.parse(line)
         if isinstance(msg, pynmea2.types.talker.RMC) and msg.status == "A":
@@ -83,7 +83,6 @@ buffer = ""
 last_gps_data = None
 last_valid_time = 0          # Last time valid GPS data was received
 gps_timeout = 5              # Seconds before declaring "GPS NOT FOUND"
-lora_busy = False            # Flag to track LoRa transmission
 last_send_time = 0           # Last LoRa transmission time
 
 try:
@@ -119,6 +118,7 @@ try:
             # No recent GPS data
             message = f"RMC|Time:{current_time}|GPS NOT FOUND"
 
+        # Ensure message fits LoRa payload size
         if len(message) > payloadLength:
             message = message[:payloadLength]
 
@@ -126,23 +126,21 @@ try:
         # 3. Send via LoRa every 200ms
         # ========================
         now = time.time()
-        if (now - last_send_time >= SEND_INTERVAL) and not lora_busy:
+        if (now - last_send_time >= SEND_INTERVAL):
             try:
                 LoRa.beginPacket()
                 LoRa.write(list(message.encode('utf-8')), len(message))
-                LoRa.endPacket()
-                lora_busy = True
+                LoRa.endPacket()  # Blocking until transmission completes
                 last_send_time = now
                 print(f"[SEND] {message}")
             except Exception as e:
                 print(f"[ERROR] LoRa send failed: {e}")
-                LoRa = init_lora()  # Restart LoRa immediately
-
-        # ========================
-        # 4. Check if LoRa finished transmitting
-        # ========================
-        if lora_busy and LoRa.transmitDone():
-            lora_busy = False  # Ready for next transmission
+                # Attempt to reinitialize LoRa
+                try:
+                    LoRa = init_lora()
+                except Exception as e2:
+                    print(f"[CRITICAL] Failed to restart LoRa: {e2}")
+                    time.sleep(1)
 
         # Tiny sleep to prevent 100% CPU usage
         time.sleep(0.001)
