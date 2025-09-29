@@ -18,7 +18,7 @@ irqPin = -1
 txenPin = 6
 rxenPin = -1
 
-SEND_INTERVAL = 0.2            # 200ms between LoRa transmissions
+SEND_INTERVAL = 1.0            # 1 second between LoRa transmissions
 
 # Add LoRa library path
 currentdir = os.path.dirname(os.path.realpath(__file__))
@@ -62,7 +62,7 @@ try:
         if len(message) > payloadLength:
             message = message[:payloadLength]
 
-        # 2. Send via LoRa every 200ms
+        # 2. Send via LoRa every 1 second
         now = time.time()
         if (now - last_send_time >= SEND_INTERVAL):
             try:
